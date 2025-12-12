@@ -1,0 +1,153 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "abd23ff3-25c3-4a0d-a084-a8f24b58ac65",
+      "name": "Email Trigger (IMAP)",
+      "credentials": {
+        "imap": {
+          "id": "pSM0kwdSd74VhTI5",
+          "name": "IMAP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ticketId = $json.subject?.match(/#(\\d+)/)?.[1] || 2;\n\n// 1️⃣ Récupérer le contenu réel du mail\nlet content = \"\";\n\nif ($json.textPlain && $json.textPlain.trim().length > 0) {\n  content = $json.textPlain;\n} else if ($json.textHtml && $json.textHtml.trim().length > 0) {\n  content = $json.textHtml;\n}\n\n// 2️⃣ Sécurité ultime\nif (!content || content.trim().length === 0) {\n  content = \"Réponse utilisateur reçue par email (contenu vide ou non détecté).\";\n}\n\n// 3️⃣ Nettoyage basique\ncontent = content\n  .replace(/\\r\\n/g, \"\\n\")\n  .replace(/\\n{3,}/g, \"\\n\\n\")\n  .trim();\n\nreturn [{\n  json: {\n    ticket_id: Number(ticketId),\n    reply_content: content\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "bae2296b-9286-4274-9bf9-547ac14f5f2e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cee7fa2e-ef64-43ad-9d1a-e3565e162847",
+              "leftValue": "={{ $json.reply_content }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "36856ed2-92d7-4b38-a5e2-3fa75493838b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=http://glpi/apirest.php/Ticket/17\n",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "App-Token",
+              "value": "N2Qivvdwu3QbqBmlAKI5AKYwtOc4AVGJu1W0BLcd"
+            },
+            {
+              "name": "Session-Token",
+              "value": "6l5oekgehju0g1hdq101cr6s12"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {\n    \"status\": 4\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        832,
+        -224
+      ],
+      "id": "30817e98-64d8-4e3c-aad1-7f83e8bca353",
+      "name": "HTTP Request1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Email Trigger (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e4819ce4-9ab5-43b6-b9be-407f21325cb2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f2c04a411bf9752a91036ef209b9fb10fc771747a73563e0b764b2bb4eecf77c"
+  },
+  "id": "RJ0tZ3WC93olLVhf",
+  "tags": []
+}

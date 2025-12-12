@@ -1,0 +1,42 @@
+services:
+  mariadb:
+    image: mariadb:10.6
+    container_name: mariadb-glpi
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: glpidb
+      MYSQL_USER: glpi
+      MYSQL_PASSWORD: glpipassword
+    volumes:
+      - ./glpi/db:/var/lib/mysql
+
+  glpi:
+    image: diouxx/glpi
+    container_name: glpi
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      TIMEZONE: Europe/Paris
+    depends_on:
+      - mariadb
+
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    volumes:
+      - ./n8n/data:/home/node/.n8n
+
+  greenmail:
+    image: greenmail/standalone:latest
+    container_name: greenmail
+    ports:
+      - "3025:3025"   # SMTP
+      - "3143:3143"   # IMAP
+      - "8083:8080"   # Web UI
+    environment:
+      - GREENMAIL_USERS=support:password@decathlon.com

@@ -1,0 +1,243 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://glpi/apirest.php/initSession",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "App-Token",
+              "value": "N2Qivvdwu3QbqBmlAKI5AKYwtOc4AVGJu1W0BLcd"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "user_token Ynl18S9gFShtIhZzKcJcF8qwgMYdwqMA0K9XTaQw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -144,
+        208
+      ],
+      "id": "77a3d45a-2d46-4c11-92cf-01f8698c36c1",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "options": {
+          "trackLastMessageId": true
+        }
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [
+        -80,
+        -208
+      ],
+      "id": "7d7a8703-fbda-43d5-ae0f-64b59f74330a",
+      "name": "Email Trigger (IMAP)",
+      "credentials": {
+        "imap": {
+          "id": "pSM0kwdSd74VhTI5",
+          "name": "IMAP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "mistral"
+            },
+            {
+              "name": "prompt",
+              "value": "={   \"model\": \"mistral\",   \"prompt\": \"Tu es un agent IT.\\nAnalyse la demande suivante et réponds STRICTEMENT en JSON avec les clés : categorie, priorite, resume.\\n\\nSujet : {{$json.subject}}\\nMessage : {{$json.textPlain}}\\n\\nRègles de priorité :\\n- haute : service bloqué, poste inutilisable\\n- moyenne : gêne partielle\\n- basse : question ou information\",   \"stream\": false }\n\nen français"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        128,
+        -208
+      ],
+      "id": "cd4e4fda-779b-4ee0-9568-8c9738324e43",
+      "name": "HTTP Request OLLAMA"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.data;\n\n// Découper ligne par ligne\nconst lines = raw.split('\\n');\n\nlet fullResponse = '';\nfor (const line of lines) {\n  if (!line.trim()) continue;\n  try {\n    const obj = JSON.parse(line);\n    if (obj.response) {\n      fullResponse += obj.response;\n    }\n  } catch (e) {\n    // ignore\n  }\n}\n\nfullResponse = fullResponse.trim();\n\n// 🔧 Sécurisation JSON\nif (!fullResponse.endsWith('}')) {\n  fullResponse += '}';\n}\n\nlet parsed;\ntry {\n  parsed = JSON.parse(fullResponse);\n} catch (e) {\n  parsed = {\n    error: \"Impossible de parser le JSON IA\",\n    raw: fullResponse\n  };\n}\n\nreturn [\n  {\n    json: parsed\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -208
+      ],
+      "id": "b0e89ec1-5da9-4e9c-b44d-eb5183f1f6b8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://glpi/apirest.php/Ticket",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "App-Token",
+              "value": "N2Qivvdwu3QbqBmlAKI5AKYwtOc4AVGJu1W0BLcd"
+            },
+            {
+              "name": "Session-Token",
+              "value": "6l5oekgehju0g1hdq101cr6s12"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": [\n    {\n      \"name\": \"{{ $json.name }}\",\n      \"content\": \"{{ $json.content }}\",\n      \"urgency\": {{$json.priorite === \"haute\" ? 5 : 3}},\n      \"impact\": {{$json.priorite === \"haute\" ? 5 : 3}},\n      \"priority\": {{$json.priorite === \"haute\" ? 5 : 3}}\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        752,
+        -208
+      ],
+      "id": "d5c14c39-6a84-4f5b-94cd-5fa1c160bbc0",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const categorieMap = {\n  Hardware: 3,\n  Software: 4,\n  Réseau: 5\n};\n\nconst prioriteMap = {\n  basse: 1,\n  moyenne: 3,\n  haute: 5\n};\n\nreturn [{\n  json: {\n    name: $json.categorie,\n    content: $json.resume,\n    itilcategories_id: categorieMap[$json.categorie] ?? 1,\n    priority: prioriteMap[$json.priorite] ?? 3\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -208
+      ],
+      "id": "9d66fdd3-9230-4282-9410-e8cb31165f35",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/enrich-ticket",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ticket_id\": {{ $json.id }},\n  \"title\": \"{{ $json.name }}\",\n  \"content\": \"{{ $json.content }}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        960,
+        -208
+      ],
+      "id": "06eb9f68-5c63-482c-a712-6974179ba500",
+      "name": "HTTP Request2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Email Trigger (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request OLLAMA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request OLLAMA": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4d9197e3-af72-48f1-b6a1-eb47b4d67fca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f2c04a411bf9752a91036ef209b9fb10fc771747a73563e0b764b2bb4eecf77c"
+  },
+  "id": "lb5ybaA4QWX9H0oC",
+  "tags": []
+}

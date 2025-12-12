@@ -1,0 +1,244 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "http://glpi/apirest.php/Ticket",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "App-Token",
+              "value": "N2Qivvdwu3QbqBmlAKI5AKYwtOc4AVGJu1W0BLcd"
+            },
+            {
+              "name": "Session-Token",
+              "value": "6l5oekgehju0g1hdq101cr6s12"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "4c801b7f-856a-4035-a13f-edb0f33eaffd",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const content = item.json.content || \"\";\n\n  return {\n    json: {\n      ticket_id: item.json.id,\n      ticket_text: `\nTitre: ${item.json.name || \"Sans titre\"}\nDescription: ${content}\nPriorité: ${item.json.priority}\nUrgence: ${item.json.urgency}\nImpact: ${item.json.impact}\n      `\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "bb7a0c4f-7604-49ba-90fd-4413dcfaacbd",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "mistral:latest",
+          "mode": "list",
+          "cachedResultName": "mistral:latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Tu es un agent de support informatique de niveau 1.\n\nTon rôle est d’analyser un ticket GLPI et de déterminer s’il contient toutes les informations nécessaires pour être traité efficacement.\n\nVoici le ticket à analyser :\n{{ $json.ticket_text }}\n\n---\n\nRÈGLES D’ANALYSE :\n\n1. Vérifie si les informations essentielles suivantes sont présentes :\n- poste concerné (PC, laptop, serveur, logiciel, etc.)\n- numéro de série ou identifiant du matériel (si applicable)\n- contexte précis du problème\n- impact pour l’utilisateur ou l’activité\n- environnement ou logiciel concerné (OS, navigateur, application, etc.)\n\n2. Si UNE ou PLUSIEURS de ces informations sont manquantes :\n- considère que le ticket est incomplet\n- prépare un email professionnel pour demander ces informations à l’utilisateur\n\n3. Si toutes les informations sont présentes :\n- le ticket est considéré comme complet\n- aucun email n’est nécessaire\n\n---\n\nFORMAT DE RÉPONSE (STRICT – JSON UNIQUEMENT) :\n\nRetourne exactement ce JSON, sans texte supplémentaire :\n\n{\n  \"is_complete\": boolean,\n  \"missing_info\": [ \"liste des informations manquantes\" ],\n  \"email_needed\": boolean,\n  \"email_draft\": \"contenu de l’email si email_needed = true, sinon chaîne vide\"\n}\n\n---\n\nRÈGLES IMPORTANTES :\n\n- Si missing_info n’est PAS vide, alors email_needed DOIT être true.\n- L’email doit être :\n  - professionnel\n  - clair\n  - poli\n  - avec des questions ciblées\n- Mentionne explicitement que la réponse à l’email sera automatiquement ajoutée au ticket.\n- Ne mets aucun texte en dehors du JSON.\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "257a3a52-e4e9-46ba-b804-d4d74eda4c57",
+      "name": "Message a model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "RICaX0ErURCpOHD1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = items[0].json.content;\n\n// Extraire le JSON entre { ... }\nconst match = raw.match(/\\{[\\s\\S]*\\}/);\n\nif (!match) {\n  throw new Error(\"Aucun JSON détecté dans la réponse du modèle\");\n}\n\nconst data = JSON.parse(match[0]);\n\nreturn [{\n  json: {\n    is_complete: data.is_complete ?? false,\n    email_needed: data.email_needed ?? false,\n    missing_info: data.missing_info ?? [],\n    email_draft: data.email_draft ?? \"\"\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        0
+      ],
+      "id": "f4408854-fa51-4cc6-bac9-d74fd83c179e",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d1956429-5eac-45e9-ac1d-3278eb1b5da4",
+              "leftValue": "={{ $json.email_needed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1184,
+        -16
+      ],
+      "id": "cc784c81-3345-43a8-a2f8-e488f0a34441",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "fromEmail": "support@test.local",
+        "toEmail": "user@test.local",
+        "subject": "=Informations complémentaires – Ticket #{{ $json.ticket_id }}",
+        "html": "=Bonjour,\n\nAfin de traiter votre demande plus efficacement, pourriez-vous nous préciser :\n\n{{ $json.missing_info.join(\", \") }}\n\nVotre réponse à cet email sera automatiquement ajoutée à votre ticket.\n\nCordialement,  \nSupport informatique\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        -48
+      ],
+      "id": "7dafeba1-c41b-47b9-aefc-afdc7c949414",
+      "name": "Send email",
+      "webhookId": "771f0da8-9286-4d38-ac5a-86219efd2455",
+      "credentials": {
+        "smtp": {
+          "id": "nifXQDZgMOOC3ooA",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "enrich-ticket",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0d1236af-da1a-415e-a100-e69840ab1a9a",
+      "name": "Webhook",
+      "webhookId": "7a3ae684-c215-486d-a744-d05e4d0b1afc"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3df3925e-ce1d-4979-9109-b7014cefe8e4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f2c04a411bf9752a91036ef209b9fb10fc771747a73563e0b764b2bb4eecf77c"
+  },
+  "id": "HZrNw01gnM9VoiBp",
+  "tags": []
+}

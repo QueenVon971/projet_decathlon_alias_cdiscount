@@ -188,8 +188,8 @@ App-Token: APP_TOKEN
 Send-MailMessage `
   -To "support@decathlon.com" `
   -From "user@test.local" `
-  -Subject "HDMI défectueux" `
-  -Body "Plus d'affichage à l'écran" `
+  -Subject "Casque defectueux" `
+  -Body "Je n'entends plus rien." `
   -SmtpServer "localhost" `
   -Port 3025
 ```

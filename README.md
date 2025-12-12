@@ -95,7 +95,7 @@ docker-compose up -d
 
 - **GLPI** : http://localhost:8080
 - **n8n** : http://localhost:5678
-- **GreenMail** : http://localhost:8081
+- **GreenMail** : http://localhost:8083
 
 ---
 

@@ -101,6 +101,11 @@ docker-compose up -d
 
 ## 5. Configuration GLPI
 
+Donnée de connexion de la BDD :
+  SQL SERVER : mariadb
+  SQL USER : glpi
+  SQL PASSWORD : glpipassword
+  
 ### 5.1 Activation de l'API REST
 
 1. Aller dans **Configuration > Général > API**

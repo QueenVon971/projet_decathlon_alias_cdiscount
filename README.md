@@ -186,10 +186,10 @@ App-Token: APP_TOKEN
 
 ```powershell
 Send-MailMessage `
-  -To "support@test.local" `
+  -To "support@decathlon.com" `
   -From "user@test.local" `
-  -Subject "PC ne démarre plus" `
-  -Body "Je suis bloqué en magasin" `
+  -Subject "HDMI défectueux" `
+  -Body "Plus d'affichage à l'écran" `
   -SmtpServer "localhost" `
   -Port 3025
 ```
